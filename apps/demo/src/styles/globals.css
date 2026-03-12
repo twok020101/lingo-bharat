@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PayBharat Demo App — looks polished, but intentionally has NO Indic font imports.
+   This triggers Lingo Bharat's font-stack checker for hi/ta locales. */
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* NOTE: Only Inter (Latin) is loaded. No Noto Sans Devanagari, Noto Sans Tamil, etc.
+   This is the intentional font-stack violation that lingo-bharat detects. */
+body {
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+
+/* Lingo Bharat: Devanagari font for locale 'hi' */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
+:root[lang="hi"] {
+  --font-primary: 'Inter', 'Noto Sans Devanagari', sans-serif;
+}
+
+
+/* Lingo Bharat: Tamil font for locale 'ta' */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap');
+
+:root[lang="ta"] {
+  --font-primary: 'Inter', 'Noto Sans Tamil', sans-serif;
+}

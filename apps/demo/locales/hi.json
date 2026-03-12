@@ -1,0 +1,22 @@
+{
+    "nav.home": "होम",
+    "nav.portfolio": "पोर्टफोलियो",
+    "nav.transfer": "ट्रांसफर",
+    "nav.settings": "सेटिंग्स",
+    "portfolio.title": "आपका पोर्टफोलियो",
+    "portfolio.total_value": "कुल मूल्य: ₹12,34,567",
+    "portfolio.daily_gain": "+₹1,234 आज",
+    "portfolio.monthly_return": "मासिक रिटर्न: 5.2%",
+    "welcome.message": "नमस्ते! वापसी पर स्वागत है।",
+    "welcome.subtext": "अपना पोर्टफोलियो देखने के लिए यहां क्लिक करें।",
+    "transfer.title": "पैसे ट्रांसफर करें",
+    "transfer.button": "पैसे भेजो",
+    "transfer.confirm": "क्या आप सुनिश्चित हैं?",
+    "transfer.amount_label": "राशि दर्ज करें",
+    "transactions.title": "हाल के लेनदेन",
+    "transactions.sent": "{name} को भेजा गया",
+    "transactions.received": "{name} से प्राप्त",
+    "error.retry": "कृपया पुनः प्रयास करें।",
+    "error.network": "नेटवर्क समस्या। कृपया बाद में पुनः प्रयास करें।",
+    "error.insufficient": "अपर्याप्त शेष राशि।"
+}

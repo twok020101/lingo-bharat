@@ -1,0 +1,32 @@
+name: Lingo Bharat PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**/*.json'
+      - '**/*.css'
+
+jobs:
+  localization-check:
+    name: Indic Localization Readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci || yarn install || pnpm install
+
+      - name: Run Lingo Bharat Check
+        env:
+          LINGODOTDEV_API_KEY: ${{ secrets.LINGODOTDEV_API_KEY }}
+        run: |
+          # Assuming lingo-bharat is installed as a devDependency or run via npx
+          # You may need to adjust the path/command depending on how you use it in the target repo
+          npx lingo-bharat check --config ./i18n.json --verbose

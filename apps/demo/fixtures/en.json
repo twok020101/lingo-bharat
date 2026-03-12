@@ -1,0 +1,22 @@
+{
+    "nav.home": "Home",
+    "nav.portfolio": "Portfolio",
+    "nav.transfer": "Transfer",
+    "nav.settings": "Settings",
+    "portfolio.title": "Your Portfolio",
+    "portfolio.total_value": "Total Value: $123,456",
+    "portfolio.daily_gain": "+$1,234 today",
+    "portfolio.monthly_return": "Monthly Return: 5.2%",
+    "welcome.message": "Hello! Welcome back.",
+    "welcome.subtext": "Click here to view your portfolio.",
+    "transfer.title": "Transfer Funds",
+    "transfer.button": "Send Money",
+    "transfer.confirm": "Are you sure?",
+    "transfer.amount_label": "Enter Amount",
+    "transactions.title": "Recent Transactions",
+    "transactions.sent": "Sent to {name}",
+    "transactions.received": "Received from {name}",
+    "error.retry": "Please try again.",
+    "error.network": "Network issue. Please try later.",
+    "error.insufficient": "Insufficient balance."
+}

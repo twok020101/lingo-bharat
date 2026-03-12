@@ -1,0 +1,23 @@
+{
+    "name": "lingo-bharat-monorepo",
+    "private": true,
+    "packageManager": "pnpm@9.15.0",
+    "scripts": {
+        "build": "turbo build",
+        "dev": "turbo dev",
+        "test": "turbo test",
+        "lint": "turbo lint",
+        "check": "pnpm --filter lingo-bharat check",
+        "fix": "pnpm --filter lingo-bharat fix"
+    },
+    "devDependencies": {
+        "turbo": "^2.4.0",
+        "typescript": "^5.7.0"
+    },
+    "pnpm": {
+        "overrides": {
+            "react": "19.1.0",
+            "react-dom": "19.1.0"
+        }
+    }
+}

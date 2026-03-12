@@ -1,0 +1,22 @@
+{
+    "nav.home": "முகப்பு",
+    "nav.portfolio": "போர்ட்ஃபோலியோ மேலாண்மை",
+    "nav.transfer": "பணப்பரிமாற்றம்",
+    "nav.settings": "அமைப்புகள் மற்றும் விருப்பத்தேர்வுகள்",
+    "portfolio.title": "உங்கள் போர்ட்ஃபோலியோ",
+    "portfolio.total_value": "மொத்த மதிப்பு: ₹12,34,567",
+    "portfolio.daily_gain": "+₹1,234 இன்று",
+    "portfolio.monthly_return": "மாதாந்திர வருவாய்: 5.2%",
+    "welcome.message": "வணக்கம்! மீண்டும் வருக.",
+    "welcome.subtext": "உங்கள் போர்ட்ஃபோலியோவைப் பார்க்க இங்கே கிளிக் செய்யவும்.",
+    "transfer.title": "பணத்தை மாற்றவும்",
+    "transfer.button": "பணத்தை அனுப்புங்கள் இப்போதே",
+    "transfer.confirm": "நீங்கள் உறுதியாக இருக்கிறீர்களா?",
+    "transfer.amount_label": "தொகையை உள்ளிடவும்",
+    "transactions.title": "சமீபத்திய பரிவர்த்தனைகள்",
+    "transactions.sent": "{name} க்கு அனுப்பப்பட்டது",
+    "transactions.received": "{name} இடமிருந்து பெறப்பட்டது",
+    "error.retry": "மீண்டும் முயற்சிக்கவும்.",
+    "error.network": "நெட்வொர்க் சிக்கல் உள்ளது. பின்னர் முயற்சிக்கவும்.",
+    "error.insufficient": "போதுமான இருப்பு இல்லை."
+}
