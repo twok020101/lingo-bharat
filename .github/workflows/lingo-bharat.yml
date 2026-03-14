@@ -11,6 +11,10 @@ jobs:
   localization-check:
     name: Indic Localization Readiness
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,13 +24,112 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm ci || yarn install || pnpm install
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      # Step 2: Run Lingo.dev translate to ensure translations are up to date
+      - name: Lingo.dev Translate (i18n sync)
+        uses: lingodotdev/lingo.dev@main
+        with:
+          api-key: ${{ secrets.LINGODOTDEV_API_KEY }}
+        continue-on-error: true
+
+      # Step 3: Run Lingo Bharat quality gate
       - name: Run Lingo Bharat Check
+        id: bharat-check
         env:
           LINGODOTDEV_API_KEY: ${{ secrets.LINGODOTDEV_API_KEY }}
         run: |
-          # Assuming lingo-bharat is installed as a devDependency or run via npx
-          # You may need to adjust the path/command depending on how you use it in the target repo
-          npx lingo-bharat check --config ./i18n.json --verbose
+          npx lingo-bharat check \
+            --config ./i18n.json \
+            --min-score 70 \
+            --ci \
+            --verbose \
+            --report-path ./bharat-report.json || echo "check_failed=true" >> $GITHUB_OUTPUT
+
+      # Step 4: Post PR comment with BRS score
+      - name: Comment PR with BRS Score
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('./bharat-report.json', 'utf-8'));
+            } catch {
+              core.info('No report file found, skipping PR comment');
+              return;
+            }
+
+            const grade = report.grade;
+            const brs = report.bharatReadinessScore;
+            const gradeEmoji = { A: '🟢', B: '🟡', C: '🟠', D: '🔴', F: '⛔' };
+
+            const checksTable = report.checks.map(c => {
+              const status = c.passed ? '✅' : '❌';
+              return `| ${status} ${c.name} | ${c.score}/${c.maxScore} | ${c.violations.length} |`;
+            }).join('\n');
+
+            const body = [
+              `## 🇮🇳 Lingo Bharat — Indic Localization Report`,
+              '',
+              `**Bharat Readiness Score:** ${gradeEmoji[grade] || '⚪'} **${brs}/100** (Grade: **${grade}**)`,
+              '',
+              `| Check | Score | Violations |`,
+              `|-------|-------|------------|`,
+              checksTable,
+              '',
+              `**Total Violations:** ${report.totalViolations} (${report.autoFixableViolations} auto-fixable)`,
+              `**Coverage:** ${report.coverageSummary.currentCoveragePercent}% of Indian internet users`,
+              '',
+              report.localeValidation && report.localeValidation.length > 0
+                ? `**Locale Validation** (via Lingo.dev \`recognizeLocale()\`):\n${report.localeValidation.map(v => `- ${v.match ? '✅' : '❌'} \`${v.declaredLocale}\` detected as \`${v.detectedLocale || 'unknown'}\``).join('\n')}`
+                : '',
+              '',
+              `> Run \`npx lingo-bharat fix --config ./i18n.json\` to auto-fix violations.`,
+              `> Powered by [Lingo.dev SDK](https://lingo.dev) + Lingo Bharat`,
+            ].filter(Boolean).join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c =>
+              c.body && c.body.includes('Lingo Bharat — Indic Localization Report')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      # Step 5: Upload report artifact
+      - name: Upload BRS Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bharat-report
+          path: bharat-report.json
+          if-no-files-found: ignore
