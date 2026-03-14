@@ -7,6 +7,7 @@ import {
   buildCheckerContext,
   runChecks,
   loadTranslationFiles,
+  FormalityFixer,
   type CheckResult,
   type CheckerContext,
   type Violation,
@@ -37,14 +38,26 @@ export async function fixCommand(options: FixOptions): Promise<void> {
 
     let totalFixed = 0;
 
+    // Collect all formality violations for batch processing
+    const formalityViolations: Violation[] = [];
+    const otherResults: { result: CheckResult; violations: Violation[] }[] = [];
+
     for (const result of results) {
       const fixableViolations = result.violations.filter(v => v.autoFix);
       if (fixableViolations.length === 0) continue;
 
-      console.log(`\n${chalk.bold(`Fixing: ${result.name}`)} (${fixableViolations.length} fixable)`);
+      const formality = fixableViolations.filter(v => v.autoFix?.type === 'lingo-sdk-retranslate');
+      const others = fixableViolations.filter(v => v.autoFix?.type !== 'lingo-sdk-retranslate');
 
-      // Deduplicate formality violations by key+file — each key only needs one re-translation
-      const seenFormalityKeys = new Set<string>();
+      formalityViolations.push(...formality);
+      if (others.length > 0) {
+        otherResults.push({ result, violations: others });
+      }
+    }
+
+    // Process non-formality fixes first
+    for (const { result, violations: fixableViolations } of otherResults) {
+      console.log(`\n${chalk.bold(`Fixing: ${result.name}`)} (${fixableViolations.length} fixable)`);
 
       for (const violation of fixableViolations) {
         if (!violation.autoFix) continue;
@@ -60,20 +73,7 @@ export async function fixCommand(options: FixOptions): Promise<void> {
             totalFixed++;
             break;
 
-          case 'lingo-sdk-retranslate': {
-            const dedupeKey = `${violation.file}:${violation.key}`;
-            if (seenFormalityKeys.has(dedupeKey)) {
-              totalFixed++; // Count but skip duplicate
-              break;
-            }
-            seenFormalityKeys.add(dedupeKey);
-            await applyFormalityFix(violation, ctx, projectRoot, options.dryRun);
-            totalFixed++;
-            break;
-          }
-
           case 'i18n-config-patch':
-            // Coverage patch — show instruction
             console.log(
               `  ${chalk.yellow('→')} ${violation.autoFix.description}`
             );
@@ -86,6 +86,12 @@ export async function fixCommand(options: FixOptions): Promise<void> {
             break;
         }
       }
+    }
+
+    // Batch process formality violations via FormalityFixer (localizeObject)
+    if (formalityViolations.length > 0) {
+      console.log(`\n${chalk.bold('Fixing: Formality Register')} (${formalityViolations.length} fixable via batch)`);
+      totalFixed += await applyBatchFormalityFix(formalityViolations, ctx, projectRoot, options.dryRun);
     }
 
     console.log(`\n${chalk.green('✓')} Applied ${totalFixed} fix${totalFixed !== 1 ? 'es' : ''}.`);
@@ -223,61 +229,86 @@ function convertToIndianNumberFormat(value: string): string {
   });
 }
 
-async function applyFormalityFix(
-  violation: Violation,
+/**
+ * Batch fix formality violations using FormalityFixer (localizeObject API).
+ * Returns count of fixes applied.
+ */
+async function applyBatchFormalityFix(
+  violations: Violation[],
   ctx: CheckerContext,
   projectRoot: string,
   dryRun: boolean
-): Promise<void> {
-  if (!violation.autoFix || !violation.key || !violation.file) return;
+): Promise<number> {
+  const apiKey = process.env['LINGODOTDEV_API_KEY'];
+  const sourceStrings = await loadTranslationFiles(ctx.sourceFiles);
 
-  const filePath = path.isAbsolute(violation.file)
-    ? violation.file
-    : path.join(projectRoot, violation.file);
+  // Deduplicate by key+locale
+  const seen = new Set<string>();
+  const uniqueViolations = violations.filter(v => {
+    if (!v.key) return false;
+    const dedupeKey = `${v.locale}:${v.key}`;
+    if (seen.has(dedupeKey)) return false;
+    seen.add(dedupeKey);
+    return true;
+  });
 
-  // Try to use Lingo.dev SDK for re-translation
-  try {
-    const { LingoDotDevEngine } = await import('lingo.dev/sdk');
-    const apiKey = process.env['LINGODOTDEV_API_KEY'];
+  let fixedCount = 0;
 
-    if (apiKey && violation.key) {
-      const engine = new LingoDotDevEngine({ apiKey });
-      // Load source string
-      const sourceStrings = await loadTranslationFiles(ctx.sourceFiles);
-      const sourceValue = sourceStrings[violation.key];
+  if (apiKey) {
+    // Use batch FormalityFixer with localizeObject()
+    const fixer = new FormalityFixer(apiKey);
+    console.log(`  ${chalk.cyan('→')} Batch re-translating ${uniqueViolations.length} strings via Lingo.dev localizeObject()...`);
 
-      if (sourceValue) {
-        const fixed = await engine.localizeText(sourceValue, {
-          sourceLocale: 'en',
-          targetLocale: violation.locale,
-        });
+    const fixedStrings = await fixer.fixBatch(uniqueViolations, sourceStrings, ctx.sourceLocale);
 
-        if (dryRun) {
-          console.log(`  ${chalk.yellow('→')} Would re-translate "${violation.key}"`);
-          console.log(`     ${chalk.red(`Old: ${violation.found}`)}`);
+    // Group fixes by file for efficient writing
+    const fixesByFile = new Map<string, Record<string, string>>();
+    for (const v of uniqueViolations) {
+      if (!v.key || !v.file) continue;
+      const fixed = fixedStrings[v.key];
+      if (!fixed) continue;
+
+      const filePath = path.isAbsolute(v.file) ? v.file : path.join(projectRoot, v.file);
+      const fileFixes = fixesByFile.get(filePath) ?? {};
+      fileFixes[v.key] = fixed;
+      fixesByFile.set(filePath, fileFixes);
+    }
+
+    for (const [filePath, fixes] of fixesByFile) {
+      if (dryRun) {
+        for (const [key, fixed] of Object.entries(fixes)) {
+          const original = uniqueViolations.find(v => v.key === key);
+          console.log(`  ${chalk.yellow('→')} Would re-translate "${key}"`);
+          console.log(`     ${chalk.red(`Old: ${original?.found ?? '?'}`)}`);
           console.log(`     ${chalk.green(`New: ${fixed}`)}`);
-        } else {
-          // Actually write the fix back to the JSON file
-          const content = await readFile(filePath, 'utf-8');
-          const json = JSON.parse(content) as Record<string, string>;
-          json[violation.key] = fixed;
-          await writeFile(filePath, JSON.stringify(json, null, 4) + '\n', 'utf-8');
-
-          console.log(`  ${chalk.green('✓')} Re-translated "${violation.key}" via Lingo.dev SDK`);
-          console.log(`     ${chalk.red(`Old: ${violation.found}`)}`);
-          console.log(`     ${chalk.green(`New: ${fixed}`)}`);
+          fixedCount++;
         }
-        return;
+      } else {
+        const content = await readFile(filePath, 'utf-8');
+        const json = JSON.parse(content) as Record<string, string>;
+        for (const [key, fixed] of Object.entries(fixes)) {
+          const original = uniqueViolations.find(v => v.key === key);
+          json[key] = fixed;
+          console.log(`  ${chalk.green('✓')} Re-translated "${key}" via Lingo.dev SDK (batch)`);
+          console.log(`     ${chalk.red(`Old: ${original?.found ?? '?'}`)}`);
+          console.log(`     ${chalk.green(`New: ${fixed}`)}`);
+          fixedCount++;
+        }
+        await writeFile(filePath, JSON.stringify(json, null, 4) + '\n', 'utf-8');
       }
     }
-  } catch {
-    // SDK not available or API key not set — fall back to pattern replacement
+  } else {
+    // Fallback: show manual fix suggestions
+    for (const v of uniqueViolations) {
+      console.log(`  ${chalk.yellow('→')} ${v.key ?? 'unknown'}: ${v.autoFix?.description ?? 'Fix formality'}`);
+      if (v.found && v.expected) {
+        console.log(`     ${chalk.red(`Found: "${v.found}"`)}`);
+        console.log(`     ${chalk.green(`Suggest: ${v.expected}`)}`);
+      }
+      fixedCount++;
+    }
   }
 
-  // Fallback: show manual fix suggestion
-  console.log(`  ${chalk.yellow('→')} ${violation.key ?? 'unknown'}: ${violation.autoFix.description}`);
-  if (violation.found && violation.expected) {
-    console.log(`     ${chalk.red(`Found: "${violation.found}"`)}`);
-    console.log(`     ${chalk.green(`Suggest: ${violation.expected}`)}`);
-  }
+  // Count deduplicated violations that were skipped
+  return fixedCount + (violations.length - uniqueViolations.length);
 }
