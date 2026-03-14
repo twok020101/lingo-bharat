@@ -1,0 +1,23 @@
+{
+    "cli.check.running": "Running Indic localization checks...",
+    "cli.check.complete": "Check complete. Your Bharat Readiness Score is ready.",
+    "cli.fix.applying": "Applying auto-fixes to translation files...",
+    "cli.fix.complete": "All fixable violations have been resolved.",
+    "cli.report.generating": "Generating localization readiness report...",
+    "cli.serve.starting": "Starting the Lingo Bharat dashboard...",
+    "check.numberFormat.name": "Number Format",
+    "check.numberFormat.description": "Detects international number formatting instead of Indian Lakh/Crore system",
+    "check.fontStack.name": "Font Stack",
+    "check.fontStack.description": "Checks for Indic script font fallbacks in CSS",
+    "check.formalityRegister.name": "Formality Register",
+    "check.formalityRegister.description": "Scans Hindi translations for inappropriate tu-register pronouns",
+    "check.stringOverflow.name": "String Overflow",
+    "check.stringOverflow.description": "Identifies translated strings that may overflow fixed-width UI containers",
+    "check.coverage.name": "Coverage",
+    "check.coverage.description": "Measures percentage of Indian internet users reached by supported locales",
+    "grade.A": "Excellent — Your app is well-prepared for Indian users.",
+    "grade.B": "Good — Minor improvements needed for full Indic readiness.",
+    "grade.C": "Fair — Several localization issues need attention.",
+    "grade.D": "Poor — Significant localization gaps found.",
+    "grade.F": "Failing — Critical localization issues must be fixed."
+}
