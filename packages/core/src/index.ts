@@ -12,6 +12,7 @@ export type {
   IndicPopulation,
   IndicFontRequirement,
   LocaleRecommendation,
+  LocaleValidationResult,
   LingoConfig,
   BucketConfig,
   CheckerContext,
@@ -61,6 +62,9 @@ export {
   CHECK_NAMES,
   CHECK_DESCRIPTIONS,
 } from './scoring/weights.js';
+
+// Fixer
+export { FormalityFixer } from './fixer/index.js';
 
 // Data
 export { INDIA_INTERNET_POPULATION, TOTAL_TRACKED_PERCENTAGE, INDIC_LOCALE_CODES } from './data/india-population.js';

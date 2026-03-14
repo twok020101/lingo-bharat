@@ -2,8 +2,9 @@
 import { readFile } from 'fs/promises';
 import { glob } from 'glob';
 import path from 'path';
-import type { LingoConfig, Locale, CheckerContext } from '../types.js';
+import type { LingoConfig, Locale, CheckerContext, LocaleValidationResult } from '../types.js';
 import { INDIC_LOCALE_CODES } from '../data/india-population.js';
+import { loadJsonTranslationFile } from './json-bucket.js';
 
 /**
  * Parse a Lingo.dev i18n.json config file.
@@ -120,6 +121,58 @@ export function filterIndicLocales(targetLocales: Locale[]): Locale[] {
 }
 
 /**
+ * Validate locale content using Lingo.dev SDK's recognizeLocale().
+ * Samples the first 3 translation values and checks if the detected language
+ * matches the declared locale.
+ */
+async function validateLocales(
+  translationFiles: Map<Locale, string[]>,
+  indicLocales: Locale[]
+): Promise<Map<Locale, LocaleValidationResult>> {
+  const results = new Map<Locale, LocaleValidationResult>();
+
+  try {
+    const apiKey = process.env['LINGODOTDEV_API_KEY'];
+    if (!apiKey) return results;
+
+    const { LingoDotDevEngine } = await import('lingo.dev/sdk');
+    const engine = new LingoDotDevEngine({ apiKey });
+
+    for (const locale of indicLocales) {
+      const files = translationFiles.get(locale) ?? [];
+      if (files.length === 0) continue;
+
+      // Load and sample first 3 translation values
+      const translations = await loadJsonTranslationFile(files[0]);
+      const values = Object.values(translations).filter(v => v.length > 5);
+      const sampleText = values.slice(0, 3).join('. ');
+
+      if (!sampleText) continue;
+
+      try {
+        const detected = await engine.recognizeLocale(sampleText);
+        const baseDeclared = locale.split('-')[0];
+        const baseDetected = detected ? detected.split('-')[0] : null;
+
+        results.set(locale, {
+          declaredLocale: locale,
+          detectedLocale: detected,
+          confidence: baseDetected === baseDeclared ? 1.0 : 0.0,
+          match: baseDetected === baseDeclared,
+          sampleText: sampleText.slice(0, 80),
+        });
+      } catch {
+        // Individual locale detection failed, skip
+      }
+    }
+  } catch {
+    // SDK not available or no API key — gracefully skip validation
+  }
+
+  return results;
+}
+
+/**
  * Build a full CheckerContext from config and project root.
  */
 export async function buildCheckerContext(
@@ -132,6 +185,9 @@ export async function buildCheckerContext(
   const indicLocales = filterIndicLocales(config.locale.targets);
   const { ignoredKeys, lockedKeys } = collectSkippedKeys(config);
 
+  // Validate locale content via Lingo.dev SDK recognizeLocale()
+  const localeValidation = await validateLocales(translationFiles, indicLocales);
+
   return {
     projectRoot,
     config,
@@ -142,5 +198,6 @@ export async function buildCheckerContext(
     sourceFiles,
     ignoredKeys,
     lockedKeys,
+    localeValidation,
   };
 }

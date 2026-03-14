@@ -55,6 +55,7 @@ export interface BharatReport {
     coveredLocales: Locale[];
     topRecommendations: LocaleRecommendation[];
   };
+  localeValidation?: LocaleValidationResult[];
   totalViolations: number;
   autoFixableViolations: number;
 }
@@ -105,6 +106,14 @@ export interface BucketConfig {
   preservedKeys?: string[];
 }
 
+export interface LocaleValidationResult {
+  declaredLocale: Locale;
+  detectedLocale: string | null;
+  confidence: number;
+  match: boolean;
+  sampleText: string;
+}
+
 export interface CheckerContext {
   projectRoot: string;
   config: LingoConfig;
@@ -115,4 +124,5 @@ export interface CheckerContext {
   sourceFiles: string[];
   ignoredKeys: Set<string>;
   lockedKeys: Set<string>;
+  localeValidation: Map<Locale, LocaleValidationResult>;
 }

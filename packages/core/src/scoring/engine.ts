@@ -1,5 +1,5 @@
 // packages/core/src/scoring/engine.ts
-import type { CheckId, CheckResult, Violation, BharatReport, Locale, LocaleRecommendation } from '../types.js';
+import type { CheckId, CheckResult, Violation, BharatReport, Locale, LocaleRecommendation, LocaleValidationResult } from '../types.js';
 import { CHECK_WEIGHTS, GRADE_THRESHOLDS } from './weights.js';
 import { INDIA_INTERNET_POPULATION, TOTAL_TRACKED_PERCENTAGE } from '../data/india-population.js';
 
@@ -101,7 +101,8 @@ export function buildReport(
   configPath: string,
   sourceLocale: Locale,
   targetLocales: Locale[],
-  indicLocales: Locale[]
+  indicLocales: Locale[],
+  localeValidation?: Map<Locale, LocaleValidationResult>
 ): BharatReport {
   const brs = calculateBRS(checkResults);
   const grade = getGrade(brs);
@@ -129,6 +130,7 @@ export function buildReport(
       coveredLocales: coverageData.coveredLocales,
       topRecommendations: coverageData.recommendations,
     },
+    localeValidation: localeValidation ? Array.from(localeValidation.values()) : undefined,
     totalViolations,
     autoFixableViolations,
   };

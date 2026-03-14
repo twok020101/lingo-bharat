@@ -27,7 +27,8 @@ export async function reportCommand(options: ReportOptions): Promise<void> {
       configPath,
       ctx.sourceLocale,
       ctx.targetLocales,
-      ctx.indicLocales
+      ctx.indicLocales,
+      ctx.localeValidation
     );
 
     const outputPath = path.resolve(options.output);

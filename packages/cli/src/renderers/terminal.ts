@@ -1,7 +1,7 @@
 // packages/cli/src/renderers/terminal.ts
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import type { BharatReport, CheckResult, Violation } from '@lingo-bharat/core';
+import type { BharatReport, CheckResult, Violation, LocaleValidationResult } from '@lingo-bharat/core';
 
 const SEVERITY_EMOJI: Record<string, string> = {
   critical: '🔴',
@@ -44,6 +44,18 @@ export function renderTerminalReport(report: BharatReport, verbose: boolean): vo
     return sum + fileCount;
   }, 0);
   console.log(`${chalk.gray('📄 Files:')}      ${totalFiles || 'multiple'} translation files scanned`);
+
+  // Display locale validation results (Lingo.dev SDK recognizeLocale)
+  if (report.localeValidation && report.localeValidation.length > 0) {
+    console.log('');
+    console.log(`${chalk.gray('🔍 Locale Validation')} ${chalk.gray('(via Lingo.dev recognizeLocale)')}`);
+    for (const v of report.localeValidation) {
+      const icon = v.match ? chalk.green('✓') : chalk.red('✗');
+      const detected = v.detectedLocale ?? 'unknown';
+      console.log(`   ${icon} ${v.declaredLocale}: detected as ${chalk.cyan(detected)}${v.match ? '' : chalk.red(` (mismatch!)`)}`);
+    }
+  }
+
   console.log('');
   console.log('Running checks...');
   console.log('');
