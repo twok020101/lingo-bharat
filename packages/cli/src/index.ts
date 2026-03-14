@@ -54,6 +54,7 @@ program
   .option('--min-score <score>', 'Minimum BRS score (CI mode)', '')
   .option('--ci', 'CI mode: exit code 1 if below min-score', false)
   .option('--verbose', 'Show all violations (not just top 3)', false)
+  .option('--report-path <path>', 'Write JSON report to file path')
   .action(checkCommand);
 
 program

@@ -3,6 +3,7 @@ import path from 'path';
 import ora from 'ora';
 import { buildCheckerContext, runChecks, buildReport } from '@lingo-bharat/core';
 import { renderTerminalReport } from '../renderers/terminal.js';
+import { writeJsonReport } from '../renderers/json.js';
 
 interface CheckOptions {
   config: string;
@@ -10,6 +11,7 @@ interface CheckOptions {
   minScore: string;
   ci: boolean;
   verbose: boolean;
+  reportPath?: string;
 }
 
 export async function checkCommand(options: CheckOptions): Promise<void> {
@@ -46,11 +48,19 @@ export async function checkCommand(options: CheckOptions): Promise<void> {
       configPath,
       ctx.sourceLocale,
       ctx.targetLocales,
-      ctx.indicLocales
+      ctx.indicLocales,
+      ctx.localeValidation
     );
 
     // Render terminal output
     renderTerminalReport(report, options.verbose);
+
+    // Write JSON report if --report-path specified
+    if (options.reportPath) {
+      const reportPath = path.resolve(options.reportPath);
+      await writeJsonReport(report, reportPath);
+      console.log(`\n📄 Report written to ${reportPath}`);
+    }
 
     // CI mode: exit with error code if below threshold
     if (options.ci) {
